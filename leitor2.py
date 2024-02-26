@@ -1,11 +1,16 @@
 import PyPDF2
+import re
 
-arquivo_pdf = open ('teste.pdf', 'rb');
+pdf = PyPDF2.PdfReader('relatorio.pdf')
+all_text = ""
 
-pdf = PyPDF2.PdfFileReader(arquivo_pdf);
+for page in pdf.pages:
+    text = page.extract_text()
+    all_text += (text + "\n")
 
-numero_pagina = pdf.getNumPages()
-numero_pagina
-pagina = pdf.getPage(0)
-conteudo_pagina = pagina.extractText()
-conteudo_pagina
+
+    
+
+padrao_cpf = r'\d{3}.\d{3}.\d{3}-\d{2}'
+correspondencia = re.findall(padrao_cpf,all_text)
+numero_cpf = set(correspondencia)
