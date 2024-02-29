@@ -1,26 +1,68 @@
-import PyPDF2 
-import tabula
+import os
+import pytesseract
+import cv2
 import re
 
-import warnings
-warnings.filterwarnings('ignore')
+import tkinter as tk
+from tkinter import filedialog
+from pdf2image import convert_from_path
 
-lista_tabelas = tabula.read_pdf('relatorio.pdf', pages='all')
+# Abrir uma janela para seleção de múltiplos arquivos
+root = tk.Tk()
+root.withdraw()
 
-'''
-print(len(lista_tabelas))
+# Solicitar os caminhos dos arquivos PDF
+pdf_paths = filedialog.askopenfilenames()
 
-tabela1 = lista_tabelas[0]
-print(tabela1)
+# Diretório onde as imagens serão salvas
+diretorio_destino = 'Img'
 
-print(tabela7)
-'''
-tabela7 = lista_tabelas[6]
+# Lista para armazenar os caminhos dos arquivos JPEG criados
+jpeg_paths = []
 
-texto = tabela7['coluna_interessante'].to_string(index=False)
+# Converter cada PDF em imagens JPEG
+for pdf_path in pdf_paths:
+    images = convert_from_path(pdf_path)
+    
+    # Certifique-se de que o diretório de destino existe, se não, crie-o
+    if not os.path.exists(diretorio_destino):
+        os.makedirs(diretorio_destino)
+    
+    # Salvar as imagens JPEG
+    for i, image in enumerate(images):
+        file_name = os.path.basename(pdf_path)  # Obter o nome do arquivo PDF
+        jpeg_path = os.path.join(diretorio_destino, f'{file_name}{i + 1}.jpg')
+        image.save(jpeg_path, 'JPEG')
+        
+        # Adicionar o caminho do arquivo JPEG à lista
+        jpeg_paths.append(jpeg_path)
 
-padrao = r'pagador\s+([A-Z][a-z]+(?: [A-Z][a-z]+)*)'
+# Fechar a janela do tkinter
+root.destroy()
 
-padrao1 = re.findall(padrao, tabela7)
+#--------------------------------------------------------------------------------------------------------
+# Exibir os caminhos dos arquivos JPEG criados
+print("Caminhos dos arquivos JPEG criados:")
+for path in jpeg_paths:
+    print(path)
 
-print(padrao1)
+imagem = cv2.imread("img/relatorio.pdf1.jpg")
+
+# Definir o caminho para o executável do Tesseract OCR
+caminho = r"C:\Users\itaua\AppData\Local\Programs\Tesseract-ORC"
+pytesseract.pytesseract.tesseract_cmd = caminho + r'\tesseract.exe'
+
+# Use o pytesseract para extrair texto da imagem
+texto = pytesseract.image_to_string(imagem)
+
+# Definir padrão regex para encontrar o valor do documento
+valorDoc = re.compile(r'RS t\s*(\d+,\d+)')
+padrao_nome= re.compile(r'Pagador\s*:\s*([^\-]+)\s*-')
+padrao_cpf = re.compile(r'(\d{3}\.\d{3}\.\d{3}-\d{2})')
+
+
+
+# Procurar o padrão no texto
+correspondencia = valorDoc.search(texto)
+correspondencia1 = padrao_nome.search(texto)
+correspondencia2 = padrao_cpf.search(texto)
