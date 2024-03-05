@@ -1,7 +1,9 @@
 import os
+import tabula.io
 import pytesseract
 import cv2
 import re
+
 
 import tkinter as tk
 from tkinter import filedialog
@@ -41,6 +43,7 @@ for pdf_path in pdf_paths:
 root.destroy()
 
 #--------------------------------------------------------------------------------------------------------
+
 # Exibir os caminhos dos arquivos JPEG criados
 print("Caminhos dos arquivos JPEG criados:")
 for path in jpeg_paths:
@@ -66,3 +69,7 @@ padrao_cpf = re.compile(r'(\d{3}\.\d{3}\.\d{3}-\d{2})')
 correspondencia = valorDoc.search(texto)
 correspondencia1 = padrao_nome.search(texto)
 correspondencia2 = padrao_cpf.search(texto)
+
+
+#--------------------------------------------------------------------------------------------------------
+
