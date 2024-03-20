@@ -1,66 +1,84 @@
-import cv2
+import os
 import pytesseract
+import cv2
+import re
+import PyPDF2
+import tkinter as tk
+from tkinter import filedialog
+from pdf2image import convert_from_path
 
-# Variáveis globais para armazenar coordenadas de cliques
-x1, y1, x2, y2 = -1, -1, -1, -1
-cropping = False
+# Abrir uma janela para seleção de múltiplos arquivos
+root = tk.Tk()
+root.withdraw()
 
-def cortar_imagem(event, x, y, flags, param):
-    global x1, y1, x2, y2, cropping
+# Solicitar os caminhos dos arquivos PDF
+pdf_paths = filedialog.askopenfilenames()
 
-    # Se o botão esquerdo do mouse for pressionado, iniciar o recorte
-    if event == cv2.EVENT_LBUTTONDOWN:
-        x1, y1, x2, y2 = x, y, x, y
-        cropping = True
+# Diretório onde as imagens serão salvas
+diretorio_destino = "Img"
 
-    # Atualizar as coordenadas do retângulo à medida que o mouse se move
-    elif event == cv2.EVENT_MOUSEMOVE:
-        if cropping:
-            x2, y2 = x, y
+# Lista para armazenar os caminhos dos arquivos JPEG criados
+jpeg_paths = []
 
-    # Se o botão esquerdo do mouse for liberado, finalizar o recorte
-    elif event == cv2.EVENT_LBUTTONUP:
-        x2, y2 = x, y
-        cropping = False
+# Converter cada PDF em imagens JPEG
+for pdf_path in pdf_paths:
+    images = convert_from_path(pdf_path)
+    
+    # Certifique-se de que o diretório de destino existe, se não, crie-o
+    if not os.path.exists(diretorio_destino):
+        os.makedirs(diretorio_destino)
+    
+    # Salvar as imagens JPEG
+    for i, image in enumerate(images):
+        file_name = os.path.basename(pdf_path)  # Obter o nome do arquivo PDF
+        jpeg_path = os.path.join(diretorio_destino, f'{file_name}{i + 1}.jpg')
+        image.save(jpeg_path, 'JPEG')
 
-        # Desenhar o retângulo na imagem
-        cv2.rectangle(imagem, (x1, y1), (x2, y2), (0, 255, 0), 2)
-        cv2.imshow('Imagem', imagem)
+        # Adicionar o caminho do arquivo JPEG à lista
+        jpeg_paths.append(jpeg_path)
 
-        # Cortar e mostrar a região selecionada
-        regiao_cortada = imagem[min(y1,y2):max(y1,y2), min(x1,x2):max(x1,x2)]
+# Fechar a janela do tkinter
+root.destroy()
 
-        # Converter a região cortada em texto usando OCR
-        texto = pytesseract.image_to_string(regiao_cortada)
+# Ler a imagem usando OpenCV
+imagem = cv2.imread(os.path.join(diretorio_destino, "relatorio.pdf1.jpg"))
 
-        # Exibir o texto extraído
-        print("Texto extraído:", texto)
-        
-        # Aguardar um momento para que o usuário veja o resultado antes de fechar as janelas
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+# Diretório onde o Tesseract OCR está instalado
+caminho_tesseract = r"C:\Users\itaua\AppData\Local\Programs\Tesseract-ORC"
 
-# Carregar a imagem
-imagem = cv2.imread('img/pagina_1_danfe.pdf.jpg')
+# Configurar o caminho do executável do Tesseract OCR
+pytesseract.pytesseract.tesseract_cmd = os.path.join(caminho_tesseract, 'tesseract.exe')
 
-# Clonar a imagem para desenhar o retângulo sem alterar a original
-clone = imagem.copy()
+# Use o pytesseract para extrair texto da imagem
+texto = pytesseract.image_to_string(imagem)
 
-# Criar a janela e definir a função de callback do mouse
-cv2.namedWindow('Imagem')
-cv2.setMouseCallback('Imagem', cortar_imagem)
+# Definir padrão regex para encontrar o valor do documento
+valorDoc = re.compile(r'RS t\s*(\d+,\d+)')
+padrao_nome = re.compile(r'Pagador\s*:\s*([^\-]+)\s*-')
+padrao_cpf = re.compile(r'(\d{3}\.\d{3}\.\d{3}-\d{2})')
 
-while True:
-    # Exibir a imagem com o retângulo desenhado
-    cv2.imshow('Imagem', imagem)
+# Procurar o padrão no texto
+correspondencia = valorDoc.search(texto)
+correspondencia1 = padrao_nome.search(texto)
+correspondencia2 = padrao_cpf.search(texto)
 
-    # Se a tecla 'r' for pressionada, resetar a imagem para o estado original
-    if cv2.waitKey(1) & 0xFF == ord('r'):
-        imagem = clone.copy()
+# Imprimir a string correspondente, se encontrada
+valor = correspondencia.group(1)
 
-    # Se a tecla 'c' for pressionada, sair do loop
-    elif cv2.waitKey(1) & 0xFF == ord('c'):
-        break
+nome = correspondencia1.group(1)
 
-# Fechar todas as janelas
-cv2.destroyAllWindows()
+cpf = correspondencia2.group(1)
+
+
+# Verificar se o CPF está presente no texto extraído do PDF
+for pdfR in os.listdir("teste"):
+    arquivo_pdf = open(os.path.join("teste", pdfR), 'rb')
+    pdf = PyPDF2.PdfReader(arquivo_pdf)
+    pagina = pdf.pages[0]
+    texto = pagina.extract_text()
+    corres = re.search(cpf, texto)
+    
+    if corres:
+        print("O CPF foi encontrado no PDF", pdfR)
+    else:
+        print("O CPF não foi encontrado no PDF", pdfR)
